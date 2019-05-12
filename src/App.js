@@ -17,10 +17,10 @@ class App extends Component {
     }
 
     componentDidMount() {
-        this.App.focus() // zameri okno inputu
+        this.App.focus() // focus calcualtor in window
     }
 
-    pressKey = (e) => { // funkce pro zadavani hodnot z klavesnice
+    pressKey = (e) => { // function for give inputs from keyboard
 
         e.preventDefault();
 
@@ -41,20 +41,19 @@ class App extends Component {
     addValue = value => {
 
         const allowedOperators = ['+', '-', '*', '/', '.'];
-        // resi zadavani povolenych hodnot a znaku
-        // a aby nebyl operator zadan driv nez cislo
+        // security for set only allowed numbers and operators
+        // and not set operator before first number
         if (!allowedOperators.includes(value) && isNaN(parseInt(value))) return;
-
         const {input, equalKey, prevInput} = this.state;
 
         if(isNaN(value) && value !== '.') {
             this.setState({
                 operator: value,
                 input: value,
-                prevInput: !isNaN(input) ? input : prevInput, // osetreni prvni hodnoty inputu
+                prevInput: !isNaN(input) ? input : prevInput, // secure of first input value
                 equalKey: false
             })
-        // osetreni delky policka kalkulacky
+        // limited number of values in input
         } else if(!isNaN(value) && ((input && input.length < 29) || input === '')) {
             this.setState({
                 input: !isNaN(input)
@@ -115,7 +114,7 @@ class App extends Component {
 
         if(equalKey || !input) return;
 
-        //osetreni backspace aby nedelal nic pokud je smazano posledni cislo
+        //secure backspace - do nothing when all values are deleted
         const newInput = input.slice(0, input.length - 1).length > 0
             ? input.slice(0, input.length - 1) : '';
 
@@ -131,9 +130,8 @@ class App extends Component {
             '1', '2', '3', '-',
             '.', '0', '=', '+'
         ];
-        //namapovani buttonu - lze i staticky,
-        // ale tady je to zbytecne kdyz predhazuju pokazde ten stejny button
-        // - upraveno css aby se kalkulacka po operatoru zalamovala
+        //buttons in map function - can be static components
+        // but it is not necessary when all components are same
         const body = buttonValues.map((value, id) => {
             return value !== '='
                 ? <Button key={id} handleClick={this.addValue}>{value}</Button>
@@ -142,8 +140,7 @@ class App extends Component {
 
     return (
         <div className='app' tabIndex={1} onKeyDown={(e) => this.pressKey(e)} ref={(input) => {this.App = input}}>
-            {/*bez tabIndexu nebude fungovat zadavani hodnot z klavesnice, ref vola listener na keypress
-            coz resi nasledne onKeyDow s funkci a ref */}
+            {/*tabIndex - necessary for keypressing from keyboard, onKeyDown - call function which recognize allowed keys, ref - calls listener with focus*/}
             <div className='calc-wrapper'>
                 <Input input={input}/>
                 <div className='rows'>
