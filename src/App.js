@@ -9,59 +9,152 @@ class App extends Component {
     constructor(props) {
         super(props);
         this.state = {
-            input: ''
+            input: '',
+            prevInput: '',
+            equalKey: false,
+            operator: null
         }
     }
 
+    componentDidMount() {
+        this.App.focus() // zameri okno inputu
+    }
+
+    pressKey = (e) => { // funkce pro zadavani hodnot z klavesnice
+
+        e.preventDefault();
+
+        switch (e.key) {
+            case 'Enter': this.result();
+                break;
+            case 'Backspace': this.backspace();
+                break;
+            case 'Delete': this.clear();
+                break;
+            case ',': this.addValue('.');
+                break;
+            default: this.addValue(e.key);
+                break
+        }
+    };
+
     addValue = value => {
-        this.setState({ input: this.state.input + value })
-    };
-    addOperator = value => {
-        if (this.state.input !== '') this.setState({ input: this.state.input + value })
+
+        const allowedOperators = ['+', '-', '*', '/', '.'];
+        // resi zadavani povolenych hodnot a znaku
+        // a aby nebyl operator zadan driv nez cislo
+        if (!allowedOperators.includes(value) && isNaN(parseInt(value))) return;
+
+        const {input, equalKey, prevInput} = this.state;
+
+        if(isNaN(value) && value !== '.') {
+            this.setState({
+                operator: value,
+                input: value,
+                prevInput: !isNaN(input) ? input : prevInput, // osetreni prvni hodnoty inputu
+                equalKey: false
+            })
+        // osetreni delky policka kalkulacky
+        } else if(!isNaN(value) && ((input && input.length < 29) || input === '')) {
+            this.setState({
+                input: !isNaN(input)
+                    ? `${input && !equalKey ? input : ''}${value}`
+                    : input === '.'
+                        ? `${input}${value}`
+                        : value,
+                equalKey: false
+            })
+
+        } else if(value === '.') {
+
+            this.setState({
+                input: input && !input.includes('.')
+                    ? `${input && !equalKey ? input : ''}${value}` : '.',
+                equalKey: false
+            })
+        }
     };
 
-    handleEqual = () => {
-        if (this.state.input === '') return;
-        this.setState({input: math.eval(this.state.input)})
+    result = () => {
+
+        const {input, equalKey, prevInput, operator} = this.state;
+
+        if(!input || input === operator || equalKey) return;
+
+        try {
+            const result = math.eval(`${prevInput ? prevInput : ''}${operator ? operator : ''}${input}`).toString();
+
+            this.setState({
+                input: result === 'Infinity'  ? 'Math error' : result,
+                equalKey: true,
+                prevInput: null,
+                operator: null
+            })
+        } catch {
+            this.setState({
+                input: input === '.' ? null : 'Math error',
+                equalKey: true,
+                prevInput: null,
+                operator: null
+            })
+        }
     };
 
-    render() {
-        console.log(this.state);
+    clear = () => {
+        this.setState({
+            input: '',
+            prevInput: '',
+            equalKey: false,
+            operator: ''
+        })
+    };
+
+    backspace = () => {
+
+        const {input, equalKey} = this.state;
+
+        if(equalKey || !input) return;
+
+        //osetreni backspace aby nedelal nic pokud je smazano posledni cislo
+        const newInput = input.slice(0, input.length - 1).length > 0
+            ? input.slice(0, input.length - 1) : '';
+
+        this.setState({input: newInput})
+    };
+    render () {
+
+        const {input} = this.state;
+
+        const buttonValues = [
+            '7', '8', '9', '/',
+            '4', '5', '6', '*',
+            '1', '2', '3', '-',
+            '.', '0', '=', '+'
+        ];
+        //namapovani buttonu - lze i staticky,
+        // ale tady je to zbytecne kdyz predhazuju pokazde ten stejny button
+        // - upraveno css aby se kalkulacka po operatoru zalamovala
+        const body = buttonValues.map((value, id) => {
+            return value !== '='
+                ? <Button key={id} handleClick={this.addValue}>{value}</Button>
+                : <Button key={id} handleClick={this.result}>{value}</Button>
+        });
+
     return (
-      <div className='app'>
-          <div className='calc-wrapper'>
-              <Input input={this.state.input}> </Input>
-              <div className='row'>
-                  <Button handleClick={this.addValue}>7</Button>
-                  <Button handleClick={this.addValue}>8</Button>
-                  <Button handleClick={this.addValue}>9</Button>
-                  <Button handleClick={this.addOperator}>/</Button>
-              </div>
-              <div className='row'>
-                  <Button handleClick={this.addValue}>4</Button>
-                  <Button handleClick={this.addValue}>5</Button>
-                  <Button handleClick={this.addValue}>6</Button>
-                  <Button handleClick={this.addOperator}>*</Button>
-              </div>
-              <div className='row'>
-                  <Button handleClick={this.addValue}>1</Button>
-                  <Button handleClick={this.addValue}>2</Button>
-                  <Button handleClick={this.addValue}>3</Button>
-                  <Button handleClick={this.addOperator}>+</Button>
-              </div>
-              <div className='row'>
-                  <Button handleClick={this.addOperator}>.</Button>
-                  <Button handleClick={this.addValue}>0</Button>
-                  <Button handleClick={this.handleEqual}>=</Button>
-                  <Button handleClick={this.addOperator}>-</Button>
-              </div>
-              <div className='row'>
-                  <ClearButton handleClear={() => this.setState({input: ''})}>
-                    Clear
-                  </ClearButton>
-              </div>
-          </div>
-      </div>
+        <div className='app' tabIndex={1} onKeyDown={(e) => this.pressKey(e)} ref={(input) => {this.App = input}}>
+            {/*bez tabIndexu nebude fungovat zadavani hodnot z klavesnice, ref vola listener na keypress
+            coz resi nasledne onKeyDow s funkci a ref */}
+            <div className='calc-wrapper'>
+                <Input input={input}/>
+                <div className='rows'>
+                    {body}
+                </div>
+                <div className='clear'>
+                    <ClearButton clear={() => this.clear()}>C</ClearButton>
+                    <ClearButton clear={() => this.backspace()}>←</ClearButton>
+                </div>
+            </div>
+        </div>
         );
     }
 }
